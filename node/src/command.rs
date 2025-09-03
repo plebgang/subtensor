@@ -2,7 +2,7 @@ use std::sync::{Arc, atomic::AtomicBool};
 
 use crate::{
     chain_spec,
-    cli::{Cli, Subcommand, SupportedConsensusMechanism},
+    cli::{Cli, Subcommand, SupportedConsensusMechanism, ExportChainStateCmd},
     consensus::BabeConsensus,
     ethereum::db_config_dir,
     service,
@@ -11,12 +11,17 @@ use fc_db::{DatabaseSource, kv::frontier_database_dir};
 
 use crate::consensus::AuraConsensus;
 use clap::{ArgMatches, CommandFactory, FromArgMatches, parser::ValueSource};
-use node_subtensor_runtime::Block;
+use node_subtensor_runtime::{Block, RuntimeApi};
 use sc_cli::SubstrateCli;
 use sc_service::{
     Configuration,
     config::{ExecutorConfiguration, RpcConfiguration},
 };
+use sp_api::ProvideRuntimeApi;
+use sp_blockchain::HeaderBackend;
+use sp_runtime::traits::{Block as BlockT, Header as HeaderT};
+use std::fs;
+use std::str::FromStr;
 
 impl SubstrateCli for Cli {
     fn impl_name() -> String {
@@ -232,6 +237,14 @@ pub fn run() -> sc_cli::Result<()> {
             let runner = cli.create_runner(cmd)?;
             runner.sync_run(|config| cmd.run::<Block>(&config))
         }
+        Some(Subcommand::ExportChainState(cmd)) => {
+            let runner = cli.create_runner(cmd)?;
+            runner.async_run(|mut config| {
+                let (client, _, _, task_manager, _) =
+                    cli.initial_consensus.new_chain_ops(&mut config, &cli.eth)?;
+                Ok((run_export_chain_state_cmd(cmd, client), task_manager))
+            })
+        }
         // Start with the initial consensus type asked.
         None => {
             let arg_matches = Cli::command().get_matches();
@@ -383,4 +396,61 @@ fn override_default_heap_pages(config: Configuration, pages: u64) -> Configurati
             rate_limit_trust_proxy_headers: config.rpc.rate_limit_trust_proxy_headers,
         },
     }
+}
+
+/// Run the export chain state command
+fn run_export_chain_state_cmd(
+    cmd: &ExportChainStateCmd,
+    client: Arc<crate::client::FullClient>,
+) -> sc_cli::Result<()> {
+    use state_export_runtime_api::{StateExportApi, StateExportConfig};
+    
+    // Determine the block hash to export from
+    let block_hash = match &cmd.at {
+        Some(at) => {
+            // Try to parse as block number first, then as hash
+            if let Ok(block_number) = u32::from_str(at) {
+                client.block_hash(block_number.into())
+                    .map_err(|e| format!("Failed to get block hash for number {}: {}", block_number, e))?
+                    .ok_or_else(|| format!("Block number {} not found", block_number))?
+            } else {
+                // Try to parse as hash
+                sp_core::H256::from_str(at)
+                    .map_err(|e| format!("Invalid block hash or number '{}': {}", at, e))?
+            }
+        }
+        None => {
+            // Use best block
+            client.info().best_hash
+        }
+    };
+    
+    // Get block number for logging
+    let block_number = client.block_number_from_id(&sp_blockchain::BlockId::Hash(block_hash))
+        .map_err(|e| format!("Failed to get block number: {}", e))?
+        .ok_or("Block not found")?;
+    
+    println!("Exporting state from block #{} ({})", block_number, block_hash);
+    
+    // Create export configuration
+    let prefixes = cmd.prefixes.as_ref().map(|p| {
+        p.split(',').map(|s| s.trim().as_bytes().to_vec()).collect()
+    });
+    
+    let config = StateExportConfig {
+        max_storage_size: cmd.max_entries,
+        storage_prefixes: prefixes,
+    };
+    
+    // Call the runtime API to export state
+    let runtime_api = client.runtime_api();
+    let chain_state = runtime_api.export_state_to_json(block_hash, config)
+        .map_err(|e| format!("Failed to export state: {}", e))?;
+    
+    // Write to file
+    fs::write(&cmd.output, chain_state)
+        .map_err(|e| format!("Failed to write to file '{}': {}", cmd.output, e))?;
+    
+    println!("State exported successfully to: {}", cmd.output);
+    Ok(())
 }

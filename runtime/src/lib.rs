@@ -28,7 +28,8 @@ use frame_system::{EnsureNever, EnsureRoot, EnsureRootWithSuccess, RawOrigin};
 use pallet_commitments::{CanCommit, OnMetadataCommitment};
 use pallet_grandpa::{AuthorityId as GrandpaId, fg_primitives};
 use pallet_registry::CanRegisterIdentity;
-use pallet_subtensor::rpc_info::{
+use pallet_state_export;
+use pallet_subtensor::rpc_info:{
     delegate_info::DelegateInfo,
     dynamic_info::DynamicInfo,
     metagraph::{Metagraph, SelectiveMetagraph},
@@ -38,6 +39,7 @@ use pallet_subtensor::rpc_info::{
     subnet_info::{SubnetHyperparams, SubnetHyperparamsV2, SubnetInfo, SubnetInfov2},
 };
 use pallet_subtensor_swap_runtime_api::SimSwapResult;
+use state_export_runtime_api::{ChainState, StateExportConfig, StorageEntry};
 use runtime_common::prod_or_fast;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -1578,6 +1580,17 @@ impl pallet_crowdloan::Config for Runtime {
     type MaxContributors = MaxContributors;
 }
 
+parameter_types! {
+    pub const MaxStateSize: u32 = 10_000;
+    pub const MaxStoragePrefixes: u32 = 100;
+}
+
+impl pallet_state_export::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type MaxStateSize = MaxStateSize;
+    type MaxStoragePrefixes = MaxStoragePrefixes;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
     pub struct Runtime
@@ -1614,6 +1627,7 @@ construct_runtime!(
         Drand: pallet_drand = 26,
         Crowdloan: pallet_crowdloan = 27,
         Swap: pallet_subtensor_swap = 28,
+        StateExport: pallet_state_export = 29,
     }
 );
 
@@ -2467,6 +2481,24 @@ impl_runtime_apis! {
                     alpha_fee:    sr.fee_paid.into(),
                 },
             )
+        }
+    }
+
+    impl state_export_runtime_api::StateExportApi<Block> for Runtime {
+        fn get_chain_state(config: StateExportConfig) -> Result<ChainState, sp_runtime::DispatchError> {
+            StateExport::get_chain_state(config)
+        }
+
+        fn set_chain_state(state: ChainState) -> Result<(), sp_runtime::DispatchError> {
+            StateExport::set_chain_state(state)
+        }
+
+        fn get_storage_entries(prefixes: Vec<Vec<u8>>) -> Vec<StorageEntry> {
+            StateExport::get_storage_entries(prefixes)
+        }
+
+        fn export_state_to_json(config: StateExportConfig) -> Result<Vec<u8>, sp_runtime::DispatchError> {
+            StateExport::export_state_to_json(config)
         }
     }
 }
