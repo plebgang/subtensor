@@ -58,8 +58,6 @@ pallet-subtensor = { default-features = false, path = "pallets/subtensor" }
 pallet-subtensor-swap = { default-features = false, path = "pallets/swap" }
 pallet-subtensor-swap-runtime-api = { default-features = false, path = "pallets/swap/runtime-api" }
 pallet-subtensor-swap-rpc = { default-features = false, path = "pallets/swap/rpc" }
-pallet-state-export = { default-features = false, path = "pallets/state-export" }
-state-export-runtime-api = { default-features = false, path = "pallets/state-export/runtime-api" }
 procedural-fork = { path = "support/procedural-fork", default-features = false }
 safe-math = { default-features = false, path = "primitives/safe-math" }
 share-pool = { path = "primitives/share-pool", default-features = false }

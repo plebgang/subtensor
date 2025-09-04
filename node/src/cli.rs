@@ -9,7 +9,6 @@ use sc_cli::RunCmd;
 use sc_consensus::BasicQueue;
 use sc_service::{Configuration, TaskManager};
 use std::sync::Arc;
-use clap::Args;
 
 #[derive(Debug, clap::Parser)]
 pub struct Cli {
@@ -71,9 +70,6 @@ pub enum Subcommand {
 
     // Db meta columns information.
     ChainInfo(sc_cli::ChainInfoCmd),
-
-    // Export chain state to JSON.
-    ExportChainState(ExportChainStateCmd),
 }
 
 /// Available Sealing methods.
@@ -94,26 +90,6 @@ pub enum SupportedConsensusMechanism {
     /// Aura
     #[default]
     Aura,
-}
-
-/// Export chain state to JSON command.
-#[derive(Debug, Args)]
-pub struct ExportChainStateCmd {
-    /// Block hash or number to export state from.
-    #[arg(long, value_name = "HASH_OR_NUMBER")]
-    pub at: Option<String>,
-
-    /// Output file path for the exported state.
-    #[arg(long, value_name = "PATH", default_value = "chain_state.json")]
-    pub output: String,
-
-    /// Export only specific storage prefixes (comma-separated).
-    #[arg(long, value_name = "PREFIXES")]
-    pub prefixes: Option<String>,
-
-    /// Maximum number of storage entries to export.
-    #[arg(long, value_name = "COUNT", default_value = "10000")]
-    pub max_entries: u32,
 }
 
 // Convinience methods for static dispatch of different service methods with
