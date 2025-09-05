@@ -118,11 +118,21 @@ run_node() {
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
                 "$NODE_BINARY" \
+                    --chain ./chainspecs/raw_spec_finney.json \
+                    --base-path /var/lib/subtensor \
+                    --sync=warp \
+                    --port 30333 \
+                    --max-runtime-instances 32 \
+                    --database paritydb \
+                    --db-cache 4096 \
+                    --trie-cache-size 2048 \
+                    --rpc-max-response-size 2048 \
+                    --rpc-cors all \
+                    --rpc-port 9944 \
+                    --bootnodes /dns/bootnode.finney.chain.opentensor.ai/tcp/30333/ws/p2p/12D3KooWRwbMb85RWnT8DSXSYMWQtuDwh4LJzndoRrTDotTR5gDC \
+                    --no-mdns \
+                    --rpc-external \
                     --wasm-runtime-overrides "$WASM_OVERRIDE_DIR" \
-                    --chain finney \
-                    --sync warp \
-                    --tmp \
-                    # --bootnodes /dns/bootnode.finney.chain.opentensor.ai/tcp/30333/ws/p2p/12D3KooWRwbMb85RWnT8DSXSYMWQtuDwh4LJzndoRrTDotTR5gDC \
                     $additional_args
             else
                 print_info "Cancelled mainnet connection"
