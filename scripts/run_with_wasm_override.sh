@@ -46,7 +46,7 @@ check_binary() {
 # Function to build runtime
 build_runtime() {
     print_info "Building runtime package: $RUNTIME_PACKAGE"
-    cargo build --release -p "$RUNTIME_PACKAGE" --features metadata-hash
+    cargo build --release -p "$RUNTIME_PACKAGE" --features metadata-hash,try-runtime,fast-simulation
     
     if [ $? -eq 0 ]; then
         print_success "Runtime built successfully"

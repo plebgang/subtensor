@@ -163,6 +163,7 @@ fast-runtime = [
 	"pallet-subtensor/fast-runtime",
 	"subtensor-runtime-common/fast-runtime",
 ]
+fast-simulation = ["pallet-subtensor/fast-simulation"]
 std = [
 	"frame-try-runtime?/std",
 	"frame-system-benchmarking?/std",

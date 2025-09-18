@@ -149,3 +149,4 @@ try-runtime = [
 ]
 pow-faucet = []
 fast-runtime = ["subtensor-runtime-common/fast-runtime"]
+fast-simulation = []

@@ -18,7 +18,16 @@ impl<T: Config + pallet_drand::Config> Pallet<T> {
         );
         log::debug!("Block emission: {block_emission:?}");
         // --- 3. Run emission through network.
-        Self::run_coinbase(block_emission);
+        // Check if we should use fast simulation mode
+        if cfg!(feature = "fast-simulation") {
+            // Use fast simulation with native types for speed
+            // Simulate 10 blocks at once for 10x speedup (configurable)
+            let simulation_multiplier = 10u32; // Can be made configurable via runtime parameter
+            Self::run_coinbase_fast_sim(block_emission.to_num::<f64>(), simulation_multiplier);
+        } else {
+            // Use standard deterministic implementation
+            Self::run_coinbase(block_emission);
+        }
         // --- 4. Set pending children on the epoch; but only after the coinbase has been run.
         Self::try_set_pending_children(block_number);
         // Return ok.
